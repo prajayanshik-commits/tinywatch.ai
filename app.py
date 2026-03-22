@@ -3,19 +3,21 @@ import streamlit as st
 st.set_page_config(page_title="TinyWatch AI MVP", layout="wide")
 
 st.title("🛡️ TinyWatch: AI Autonomous Shield")
-st.subheader("Real-time Age Detection & Content Filtering")
 
-# Sidebar for "Virtual Nanny" Stats
-st.sidebar.header("Virtual Nanny Dashboard")
-st.sidebar.write("Status: Active 🟢")
+# Sidebar for Demo Control
+st.sidebar.header("Judge's Control Panel")
+is_child = st.sidebar.toggle("Simulate Child Detected", value=True)
 
-# Mock Camera Input
-img_file = st.camera_input("Scan Face to Unlock Content")
+st.write("### 📸 Step 1: Scanning User")
+img_file = st.camera_input("Take a photo to verify age")
 
 if img_file:
-    st.warning("⚠️ CHILD DETECTED (Age Est: 7-9). Activating KidShield...")
-    st.write("### 📺 Safe Content Feed (YouTube Kids)")
-    # This is a safe educational video for the demo
-    st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ") 
-else:
-    st.info("Please stand in front of the camera to begin.")
+    if is_child:
+        st.error("🚫 CHILD DETECTED (Age: 6-8)")
+        st.subheader("📺 Safe Feed: YouTube Kids Activated")
+        st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ") 
+        st.info("💡 Virtual Nanny: 'Please sit back, you are too close to the screen!'")
+    else:
+        st.success("✅ ADULT DETECTED (Access Granted)")
+        st.subheader("📺 Standard Feed: YouTube Full")
+        st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
