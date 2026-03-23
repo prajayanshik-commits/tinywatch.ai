@@ -1,46 +1,40 @@
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer
+import av
 import cv2
 import mediapipe as mp
-import numpy as np
 
-# Initialize MediaPipe for Real-time tracking
+# Initialize MediaPipe
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True)
 
-st.set_page_config(page_title="TinyWatch: Zero-UI Shield", layout="wide")
+st.set_page_config(page_title="TinyWatch: Auto-Scan", layout="wide")
 
-# Sidebar - Matching your screenshot (efg.jpeg)
+# Sidebar - Matching your screenshot
 st.sidebar.title("👤 Demo Controller")
 app_mode = st.sidebar.radio("AI Detection Result:", ["Child (Age 7)", "Adult (Age 25)"])
 proximity_slider = st.sidebar.slider("Proximity Sensor (cm):", 0, 100, 46)
 
-st.title("🛡️ TinyWatch AI: Automatic Protection")
+st.title("🛡️ TinyWatch AI: Real-Time Shield")
 
-# The "Direct Scan" placeholder
-FRAME_WINDOW = st.image([]) 
-camera = cv2.VideoCapture(0) # Starts the webcam automatically
+# Function to process video frames automatically
+def callback(frame):
+    img = frame.to_ndarray(format="bgr24")
+    
+    # Logic: If 'Child' and 'Slider' is low, show alert on video
+    if app_mode == "Child (Age 7)" and proximity_slider < 30:
+        cv2.putText(img, "WARNING: TOO CLOSE!", (50, 100), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 4)
+    
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-while True:
-    ret, frame = camera.read()
-    if not ret:
-        break
-    
-    # Convert for processing
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(frame_rgb)
-    
-    # Check for proximity automatically
-    if proximity_slider < 30 and app_mode == "Child (Age 7)":
-        cv2.putText(frame, "⚠️ TOO CLOSE! SIT BACK", (50, 50), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-        st.warning("🚨 SPEAKER ALERT: 'Please sit back, protect your eyes!'")
-    
-    # Show the live scan to the judges
-    FRAME_WINDOW.image(frame_rgb)
+# The Live Video Component
+webrtc_streamer(key="tinywatch-scan", video_frame_callback=callback)
 
-    # Content Logic
-    if app_mode == "Child (Age 7)":
-        st.subheader("📺 Safe Kids Feed Activated")
-        # Grid of videos would go here
-    else:
-        st.subheader("📺 Adult Access Granted")
+if app_mode == "Child (Age 7)":
+    if proximity_slider < 30:
+        st.error("🚨 SPEAKER: 'Please sit back, you are too close!'")
+    st.subheader("📺 Safe Kids Feed")
+    col1, col2 = st.columns(2)
+    with col1: st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
+    with col2: st.video("https://www.youtube.com/watch?v=71h8MZshGSs")
