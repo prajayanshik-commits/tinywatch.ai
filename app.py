@@ -1,46 +1,59 @@
 import streamlit as st
-import time
+import cv2
+import numpy as np
+from PIL import Image
 
-st.set_page_config(page_title="TinyWatch: AI Kids Shield", layout="wide")
-st.title("🛡️ TinyWatch: AI-Autonomous Content Shield")
+st.set_page_config(page_title="TinyWatch: AI Shield", layout="wide")
+st.title("🛡️ TinyWatch: Autonomous AI Shield")
 
-# --- SIDEBAR: Presentation Controls (Simulating the AI) ---
-st.sidebar.header("🕹️ Demo Controls")
-user_type = st.sidebar.radio("AI Detection Result:", ["Child (Age 7)", "Adult (Age 25)"])
-dist = st.sidebar.slider("Proximity Sensor (cm):", 5, 100, 50)
-
-# --- STEP 1: FACIAL ANALYSIS ---
-st.write("### 📸 Step 1: Zero-UI Facial Scan")
-cam = st.camera_input("Scanning for Age Verification...")
-
-if cam:
-    if user_type == "Child (Age 7)":
-        # STEP 2 & 3: AGE ESTIMATION & ALERTS
-        st.error("🚫 CHILD DETECTED")
-        
-        # PROXIMITY & SPEAKER LOGIC (The Nanny)
-        if dist < 30:
-            st.warning("🔊 SPEAKER: 'Please sit back! Your eyes need rest.'")
-            st.info("🕒 Security Protocol: Screen will LOCK in 30 seconds...")
+# --- AUTO-DETECTION ENGINE ---
+# This replaces the "buttons" with actual logic
+def detect_user_and_distance(image):
+    # Convert image to OpenCV format
+    img = np.array(image.convert('RGB'))
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    
+    # Load the pre-trained Face Detector
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    
+    if len(faces) > 0:
+        for (x, y, w, h) in faces:
+            # DISTANCE MATH: Smaller 'w' (width) means person is far. Larger means close.
+            # In a real app, we use 500 / w to estimate cm.
+            approx_dist = 5000 / w 
             
-            # Progress Bar for the 30-second lock simulation
-            bar = st.progress(0)
-            for i in range(100):
-                time.sleep(0.01)
-                bar.progress(i + 1)
-            st.error("🔒 SCREEN LOCKED: Maintain 30cm+ distance to resume YouTube.")
-            st.stop() # This "Merges" with YouTube by killing the video stream
-
-        # YOUTUBE MERGE (Kids Feed)
-        st.subheader("📺 Intercepted Feed: YouTube Kids")
-        c1, c2 = st.columns(2)
-        with c1: st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
-        with c2: st.video("https://www.youtube.com/watch?v=Z6_N99YvWLo")
+            # AGE MATH: Simple simulation based on face height for the demo
+            # A child's face structure is smaller relative to the frame
+            is_child = True if h < 180 else False 
             
+            return is_child, approx_dist
+    return None, None
+
+# --- UI START ---
+img_file = st.camera_input("Scanning Face...")
+
+if img_file:
+    # 1. Open the image
+    input_img = Image.open(img_file)
+    
+    # 2. RUN AUTO-DETECTION
+    is_child, distance = detect_user_and_distance(input_img)
+    
+    if is_child is not None:
+        if is_child:
+            st.error(f"🚫 CHILD DETECTED | Approx Distance: {int(distance)}cm")
+            
+            # SAFETY LOGIC
+            if distance < 40:
+                st.warning("🔊 SPEAKER: 'SIT BACK! YOU ARE TOO CLOSE!'")
+                st.error("🔒 SCREEN LOCKED FOR EYE SAFETY")
+            else:
+                st.subheader("📺 YouTube Kids Active")
+                st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
+        else:
+            st.success(f"✅ ADULT DETECTED | Approx Distance: {int(distance)}cm")
+            st.subheader("📺 Standard YouTube Feed")
+            st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     else:
-        # ADULT MODE (Standard Feed)
-        st.success("✅ ADULT DETECTED")
-        st.subheader("📺 Standard YouTube Feed")
-        c1, c2 = st.columns(2)
-        with c1: st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-        with c2: st.video("https://www.youtube.com/watch?v=3AtDnEC4zak")
+        st.info("No face detected. Please center yourself in the camera.")
