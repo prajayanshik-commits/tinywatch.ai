@@ -1,57 +1,66 @@
 import streamlit as st
 import cv2
-import numpy as np
+import mediapipe as mp
+import time
 from PIL import Image
 
-# Set up the page matching your PPT Title
-st.set_page_config(page_title="TinyWatch: AI Kids Protection", layout="wide")
+# Initialize MediaPipe Face Detection
+mp_face_detection = mp.solutions.face_detection
+face_detection = mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5)
 
-# Slide 1: Title & Vision
-st.title("🛡️ TinyWatch: AI-Based Kids Content Protection")
-st.markdown("### *Ensuring a Safe Digital Environment using Real-time Detection*")
+st.set_page_config(page_title="TinyWatch: Autonomous Shield", layout="wide")
+st.title("🛡️ TinyWatch: AI Autonomous Shield")
 
-# Sidebar: Technical Architecture & Demo Controls
-st.sidebar.header("⚙️ System Control Panel")
-st.sidebar.info("Technical Architecture: OpenCV + MediaPipe + YouTube API v3")
+# --- SESSION TIMER LOGIC (Slide 5: Screen Time) ---
+if 'start_time' not in st.session_state:
+    st.session_state.start_time = time.time()
 
-# This toggle simulates the 'Age Estimation' (Slide 3: Step 2)
-app_mode = st.sidebar.selectbox("Simulated User Detection", ["Adult (Full Access)", "Child (Restricted Mode)"])
+elapsed_time = (time.time() - st.session_state.start_time) / 60  # Convert to minutes
 
-# Interactive Voice Alert Toggle (Slide 4)
-voice_alerts = st.sidebar.checkbox("Enable 'Virtual Nanny' Voice Alerts", value=True)
+if elapsed_time > 30:
+    st.error("🔒 SCREEN LOCKED: 30-minute limit reached. Time to play outside!")
+    st.stop()
 
-# Slide 3: Core Methodology - Step 1: Facial Analysis
-st.write("---")
-st.subheader("Step 1 & 2: Facial Analysis & Age Estimation")
-img_file = st.camera_input("Scanning for User Detection (Zero-UI Friction)...")
+# --- STEP 1: CAMERA FEED ---
+img_file = st.camera_input("Scanning Environment...")
 
 if img_file:
-    # Converting image for processing (Simulating Computer Vision)
-    st.success("Face Detected: Running Deep Learning Model (CNN)...")
-    
-    if app_mode == "Child (Restricted Mode)":
-        # Slide 2 & 3: Problem & API Interception
-        st.error("🚫 CHILD DETECTED (Estimated Age: <13)")
-        st.warning("Action: Forcing YouTube API to 'Made for Kids' (Category 1) Content.")
-        
-        # Slide 4: The Smart Speaker Integration ("The Nanny")
-        if voice_alerts:
-            st.info("🔊 AI Speaker: 'Hey! Please sit back, your eyes need rest.'")
-        
-        # Displaying Filtered Content (Step 3)
-        st.write("### 📺 Safe Content Feed")
-        # Example of educational/safe content
-        st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ") 
-        
-        # Privacy-Centric Message (Slide 6)
-        st.caption("Privacy Note: Real-time processing active. No images stored on disk.")
-        
-    else:
-        # Adult Mode Logic
-        st.success("✅ ADULT DETECTED")
-        st.write("### 📺 Standard YouTube Feed (Full Access)")
-        st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    # Process image
+    img = Image.open(img_file)
+    img_array = np.array(img)
+    results = face_detection.process(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
 
-# Slide 7: Conclusion & Future Scope Footer
-st.write("---")
-st.caption("TinyWatch Vision: Technology should protect the future, not exploit it.")
+    if results.detections:
+        for detection in results.detections:
+            # Get bounding box to calculate distance
+            bbox = detection.location_data.relative_bounding_box
+            face_width = bbox.width  # How much of the screen the face takes up
+            
+            # --- DISTANCE LOGIC (Virtual Nanny) ---
+            if face_width > 0.5:  # If face takes > 50% of width, they are TOO CLOSE
+                st.warning("⚠️ PROXIMITY ALERT!")
+                # Play Audio (Self-playing HTML Audio)
+                st.components.v1.html("""
+                    <audio autoplay>
+                        <source src="https://www.soundjay.com/buttons/beep-01a.mp3" type="audio/mpeg">
+                    </audio>
+                    <script>alert("You are too close! Please move back.");</script>
+                """, height=0)
+                st.info("🔊 Virtual Nanny: 'Please sit back, you are too close to the screen!'")
+
+            # --- AGE SIMULATION (For Demo Impact) ---
+            # In a real MVP, we'd use a deep learning model here.
+            # For the pitch, we use a 'Child' default or a sidebar override.
+            st.error("👶 CHILD DETECTED")
+            
+            # --- MULTIPLE VIDEO GALLERY ---
+            st.subheader("📺 Safe Feed: YouTube Kids Gallery")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
+                st.video("https://www.youtube.com/watch?v=7uK6YvLpP90")
+            with col2:
+                st.video("https://www.youtube.com/watch?v=S-tS_E_6tSg")
+                st.video("https://www.youtube.com/watch?v=fN1Cyr0ZK9M")
+    else:
+        st.info("Searching for user...")
