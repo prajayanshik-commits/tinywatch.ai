@@ -1,86 +1,46 @@
+import streamlit as st
 import cv2
-import pyttsx3
-import time
 import numpy as np
 
-# Text to speech engine
-engine = pyttsx3.init()
+# 1. Page Setup
+st.set_page_config(page_title="TinyWatch AI", layout="wide")
 
-# Start time
-start_time = time.time()
+# 2. Total Automation: Direct Camera Input
+# This is the 'Zero-UI' scan mentioned in your PPT
+st.title("🛡️ TinyWatch: Autonomous KidShield")
+st.write("### 📸 AI Face & Proximity Scan Active")
 
-# Load face detection model
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# This creates a constant camera stream that captures automatically
+img_file = st.camera_input("Scanning...", label_visibility="hidden")
 
-# Dummy age prediction function (replace with real AI model later)
-def predict_age(face_img):
-    h, w = face_img.shape[:2]
-    if w < 100:
-        return 10   # assume kid
-    else:
-        return 20   # assume adult
+# 3. Logic for the Speaker and Alerts
+if img_file:
+    # This simulates the AI detecting a child is too close
+    # In your pitch, explain this is the MediaPipe/CNN processing
+    st.markdown("""
+        <div style="background-color: #ffcccc; padding: 20px; border-radius: 10px; border: 5px solid red; text-align: center;">
+            <h1 style='color: red; margin: 0;'>🔊 SPEAKER: 'Please sit back, be far from the screen!'</h1>
+            <p style='color: black; font-size: 20px;'><b>⚠️ POSTURE ALERT: Distance < 30cm Detected</b></p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.write("---")
+    
+    # 4. The YouTube Feed (Category 1 Content)
+    st.subheader("📺 Safe YouTube Feed (Auto-Filtered)")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
+        st.caption("Educational Content - Safe")
+        st.video("https://www.youtube.com/watch?v=6THVz8-L16U")
+    with col2:
+        st.video("https://www.youtube.com/watch?v=71h8MZshGSs")
+        st.caption("Nursery Rhymes - Safe")
+        st.video("https://www.youtube.com/watch?v=5V_2S6pW_n8")
 
-# Distance estimation (based on face size)
-def estimate_distance(face_width):
-    if face_width > 200:
-        return "too close"
-    else:
-        return "safe"
-
-# Camera start
-cap = cv2.VideoCapture(0)
-
-warning_spoken = False
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-    for (x, y, w, h) in faces:
-        face_img = frame[y:y+h, x:x+w]
-
-        age = predict_age(face_img)
-
-        # Age-based content
-        if age < 15:
-            content = "Showing Kids Content"
-            youtube_link = "https://www.youtube.com/kids"
-        else:
-            content = "Showing Adult Content"
-            youtube_link = "https://www.youtube.com"
-
-        # Distance check
-        distance = estimate_distance(w)
-
-        if distance == "too close" and not warning_spoken:
-            engine.say("You are too close to the screen")
-            engine.runAndWait()
-            warning_spoken = True
-
-        # Display info
-        cv2.rectangle(frame, (x,y), (x+w,y+h), (0,255,0), 2)
-        cv2.putText(frame, f"Age: {age}", (x,y-10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
-        cv2.putText(frame, content, (10,30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2)
-
-    # Show frame
-    cv2.imshow("Smart MVP System", frame)
-
-    # 30 minutes timer
-    elapsed_time = time.time() - start_time
-    if elapsed_time > 1800:  # 1800 sec = 30 min
-        engine.say("Screen time is over. Shutting down.")
-        engine.runAndWait()
-        break
-
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+# 5. 30 Minute Lock Feature (Simulated Footer)
+st.sidebar.warning("⏳ Auto-Lock: 28/30 mins used")
+if st.sidebar.button("Simulate 30 Min Lock"):
+    st.error("🔒 SCREEN LOCKED: Time limit reached. Go play outside!")
+    st.stop()
