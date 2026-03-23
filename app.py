@@ -1,76 +1,56 @@
 import streamlit as st
-import cv2
 import time
-import pyttsx3
 
-st.title("Smart Screen AI MVP")
+st.set_page_config(page_title="TinyWatch AI", layout="wide")
 
-# Voice engine
-engine = pyttsx3.init()
+st.title("🛡️ TinyWatch: Autonomous KidShield")
 
-def speak(text):
-    engine.say(text)
-    engine.runAndWait()
+# 1. Automatic Scan Area
+st.write("### 📸 Face Scan to Unlock")
+img_file = st.camera_input("Scan your face", label_visibility="hidden")
 
-# Load face detector
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-)
+# Initialize Session State for Timer
+if 'start_time' not in st.session_state:
+    st.session_state.start_time = time.time()
 
-run = st.button("Start Camera")
+# 2. Logic after Scanning
+if img_file:
+    # We simulate the Age Detection logic here
+    # If a face is in the camera, we trigger 'Child' mode for the demo
+    is_child = True 
+    
+    if is_child:
+        # Green Detection Label
+        st.markdown("<h2 style='color: #28a745; text-align: center;'>✅ CHILD DETECTED</h2>", unsafe_allow_html=True)
+        
+        # Speaker Alert - Only shows if they are using the app (Child mode)
+        st.markdown("""
+            <div style="background-color: #ffe6e6; padding: 15px; border: 2px solid red; border-radius: 10px;">
+                <h2 style='color: red; text-align: center; margin: 0;'>🔊 SPEAKER: 'Please sit back, be far from the screen!'</h2>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.write("---")
+        
+        # 3. Safe YouTube Feed
+        st.subheader("📺 Safe Kids Feed (Auto-Filtered)")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
+            st.video("https://www.youtube.com/watch?v=6THVz8-L16U")
+        with col2:
+            st.video("https://www.youtube.com/watch?v=71h8MZshGSs")
+            st.video("https://www.youtube.com/watch?v=5V_2S6pW_n8")
 
-FRAME_WINDOW = st.image([])
+    else:
+        # Adult Detection Label
+        st.markdown("<h2 style='color: #007bff; text-align: center;'>👤 ADULT DETECTED</h2>", unsafe_allow_html=True)
+        st.info("Standard access granted. Speaker alerts disabled.")
 
-start_time = time.time()
-warning_spoken = False
+# 4. 30 Minute Lock Logic
+elapsed_time = (time.time() - st.session_state.start_time) / 60
+if elapsed_time >= 30:
+    st.error("🔒 SCREEN LOCKED: 30-Minute Daily Limit Reached.")
+    st.stop()
 
-if run:
-    cap = cv2.VideoCapture(0)
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            st.write("Camera Error")
-            break
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-        content_text = "No face detected"
-
-        for (x, y, w, h) in faces:
-
-            # Dummy age detection
-            if w < 120:
-                age = 10
-                content_text = "👶 Kids Content"
-                youtube_link = "https://www.youtube.com/kids"
-            else:
-                age = 20
-                content_text = "🧑 Adult Content"
-                youtube_link = "https://www.youtube.com"
-
-            # Distance warning
-            if w > 200 and not warning_spoken:
-                speak("You are too close to the screen")
-                warning_spoken = True
-
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 2)
-            cv2.putText(frame, f"Age: {age}", (x, y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
-
-        # Show content type
-        st.write(content_text)
-
-        if "youtube_link" in locals():
-            st.markdown(f"[Open Content]({youtube_link})")
-
-        FRAME_WINDOW.image(frame, channels="BGR")
-
-        # Timer (30 min)
-        if time.time() - start_time > 1800:
-            speak("30 minutes over. Screen will close.")
-            st.warning("⏱️ Time Over")
-            break
-
-    cap.release()
+st.sidebar.write(f"⏱️ Session: {elapsed_time:.1f} / 30 mins")
