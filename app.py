@@ -1,46 +1,76 @@
 import streamlit as st
 import cv2
-import numpy as np
+import time
+import pyttsx3
 
-# 1. Page Setup
-st.set_page_config(page_title="TinyWatch AI", layout="wide")
+st.title("Smart Screen AI MVP")
 
-# 2. Total Automation: Direct Camera Input
-# This is the 'Zero-UI' scan mentioned in your PPT
-st.title("🛡️ TinyWatch: Autonomous KidShield")
-st.write("### 📸 AI Face & Proximity Scan Active")
+# Voice engine
+engine = pyttsx3.init()
 
-# This creates a constant camera stream that captures automatically
-img_file = st.camera_input("Scanning...", label_visibility="hidden")
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
 
-# 3. Logic for the Speaker and Alerts
-if img_file:
-    # This simulates the AI detecting a child is too close
-    # In your pitch, explain this is the MediaPipe/CNN processing
-    st.markdown("""
-        <div style="background-color: #ffcccc; padding: 20px; border-radius: 10px; border: 5px solid red; text-align: center;">
-            <h1 style='color: red; margin: 0;'>🔊 SPEAKER: 'Please sit back, be far from the screen!'</h1>
-            <p style='color: black; font-size: 20px;'><b>⚠️ POSTURE ALERT: Distance < 30cm Detected</b></p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.write("---")
-    
-    # 4. The YouTube Feed (Category 1 Content)
-    st.subheader("📺 Safe YouTube Feed (Auto-Filtered)")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.video("https://www.youtube.com/watch?v=hq3yfQnllfQ")
-        st.caption("Educational Content - Safe")
-        st.video("https://www.youtube.com/watch?v=6THVz8-L16U")
-    with col2:
-        st.video("https://www.youtube.com/watch?v=71h8MZshGSs")
-        st.caption("Nursery Rhymes - Safe")
-        st.video("https://www.youtube.com/watch?v=5V_2S6pW_n8")
+# Load face detector
+face_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+)
 
-# 5. 30 Minute Lock Feature (Simulated Footer)
-st.sidebar.warning("⏳ Auto-Lock: 28/30 mins used")
-if st.sidebar.button("Simulate 30 Min Lock"):
-    st.error("🔒 SCREEN LOCKED: Time limit reached. Go play outside!")
-    st.stop()
+run = st.button("Start Camera")
+
+FRAME_WINDOW = st.image([])
+
+start_time = time.time()
+warning_spoken = False
+
+if run:
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            st.write("Camera Error")
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+        content_text = "No face detected"
+
+        for (x, y, w, h) in faces:
+
+            # Dummy age detection
+            if w < 120:
+                age = 10
+                content_text = "👶 Kids Content"
+                youtube_link = "https://www.youtube.com/kids"
+            else:
+                age = 20
+                content_text = "🧑 Adult Content"
+                youtube_link = "https://www.youtube.com"
+
+            # Distance warning
+            if w > 200 and not warning_spoken:
+                speak("You are too close to the screen")
+                warning_spoken = True
+
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 2)
+            cv2.putText(frame, f"Age: {age}", (x, y-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
+
+        # Show content type
+        st.write(content_text)
+
+        if "youtube_link" in locals():
+            st.markdown(f"[Open Content]({youtube_link})")
+
+        FRAME_WINDOW.image(frame, channels="BGR")
+
+        # Timer (30 min)
+        if time.time() - start_time > 1800:
+            speak("30 minutes over. Screen will close.")
+            st.warning("⏱️ Time Over")
+            break
+
+    cap.release()
